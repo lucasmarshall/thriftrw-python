@@ -61,6 +61,21 @@ Value Types
 .. autoclass:: thriftrw.wire.SetValue
 
 .. autoclass:: thriftrw.wire.ListValue
+
+Message
+-------
+
+.. autoclass:: thriftrw.wire.Message
+
+.. autoclass:: thriftrw.wire.CallMessage
+
+.. autoclass:: thriftrw.wire.ReplyMessage
+
+.. autoclass:: thriftrw.wire.ExceptionMessage
+
+.. autoclass:: thriftrw.wire.OneWayMessage
+
+.. automodule:: thriftrw.wire.mtype
 """
 from __future__ import absolute_import, unicode_literals, print_function
 
@@ -80,6 +95,13 @@ from .value import (
     SetValue,
     ListValue,
     ValueVisitor,
+)
+from .message import (
+    Message,
+    CallMessage,
+    ReplyMessage,
+    ExceptionMessage,
+    OneWayMessage,
 )
 
 __all__ = [
@@ -101,4 +123,12 @@ __all__ = [
     'SetValue',
     'ListValue',
     'ValueVisitor',
+
+    # Message
+    'mtype',
+    'Message',
+    'CallMessage',
+    'ReplyMessage',
+    'ExceptionMessage',
+    'OneWayMessage',
 ]

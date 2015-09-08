@@ -18,44 +18,39 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import pytest
+"""
+The types of messages envelopes supported by Thrift.
+
+.. py:data:: CALL
+    :annotation: = 1
+
+.. py:data:: REPLY
+    :annotation: = 2
+
+.. py:data:: EXCEPTION
+    :annotation: = 3
+
+.. py:data:: ONEWAY
+    :annotation: = 4
+
+.. versionadded:: 0.6
+"""
+
+from __future__ import absolute_import, unicode_literals, print_function
 
 
-@pytest.fixture
-def module(loads):
-    return loads('''struct Struct {
-        1: required list<string> strings;
-        2: required set<i32> ints;
-        3: required map<i32, string> mapped;
-    }''')
+cpdef str name_of(int value):
+    """Returns the name of the message type with the given value.
 
-
-@pytest.fixture
-def struct(module):
-    Struct = module.Struct
-
-    return Struct(
-        strings=['foo'] * 100,
-        ints=set([256] * 100),
-        mapped={n: 'bar' for n in range(100)},
-    )
-
-
-def test_binary_dumps(benchmark, module, struct):
-    benchmark(lambda: module.dumps(struct))
-
-
-def test_binary_loads(benchmark, module, struct):
-    serialized = module.dumps(struct)
-
-    benchmark(lambda: module.loads(struct.__class__, serialized))
-
-
-def test_to_primitive(benchmark, struct):
-    benchmark(struct.to_primitive)
-
-
-def test_from_primitive(benchmark, struct):
-    primitive = struct.to_primitive()
-
-    benchmark(lambda: struct.type_spec.from_primitive(primitive))
+    Returns None if no such message type exists.
+    """
+    if value == CALL:
+        return str('CALL')
+    elif value == REPLY:
+        return str('REPLY')
+    elif value == EXCEPTION:
+        return str('EXCEPTION')
+    elif value == ONEWAY:
+        return str('ONEWAY')
+    else:
+        return None

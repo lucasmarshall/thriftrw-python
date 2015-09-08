@@ -27,8 +27,10 @@ cython_modules = [
     'thriftrw.spec.struct',
     'thriftrw.spec.typedef',
     'thriftrw.spec.union',
-    'thriftrw.wire.value',
+    'thriftrw.wire.message',
+    'thriftrw.wire.mtype',
     'thriftrw.wire.ttype',
+    'thriftrw.wire.value',
 ]
 
 # If Cython is available we will re-cythonize the pyx files, otherwise we just

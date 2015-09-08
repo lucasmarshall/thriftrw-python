@@ -21,7 +21,6 @@
 from __future__ import absolute_import, unicode_literals, print_function
 
 import struct
-from io import BytesIO
 from six.moves import range
 
 from libc.stdint cimport (
@@ -32,6 +31,9 @@ from libc.stdint cimport (
 )
 
 from thriftrw.wire cimport ttype
+from thriftrw.wire.message cimport Message
+from thriftrw.wire.message import message_cls
+
 from thriftrw._buffer cimport ReadBuffer
 from thriftrw._buffer cimport WriteBuffer
 from thriftrw.wire.value cimport (
@@ -67,6 +69,18 @@ from ._endian cimport (
 
 STRUCT_END = 0
 
+VERSION = 1
+
+# Under strict mode, the version number is in most significant 16-bits of the
+# 32-bit integer, and the most significant bit is set. This mask gets &-ed
+# with the integer to get just the version number (it still needs to be
+# shifted 16-bits to the right).
+VERSION_MASK = 0x7fff0000
+
+# The least significant 8-bits of the 32-bit integer contain the type.
+TYPE_MASK = 0x000000ff
+
+
 cdef class BinaryProtocolReader(object):
     """Parser for the binary protocol."""
 
@@ -77,7 +91,8 @@ cdef class BinaryProtocolReader(object):
 
         :param reader:
             File-like object with a ``read(num)`` method which returns
-            *exactly* the requested number of bytes.
+            *exactly* the requested number of bytes, or all remaining bytes if
+            ``num`` is negative.
         """
         self.reader = reader
 
@@ -136,6 +151,41 @@ cdef class BinaryProtocolReader(object):
     cdef double _double(self) except *:
         cdef int64_t value = self._i64()
         return (<double*>(&value))[0]
+
+    def read_message(self):
+        size = self._i32()
+        # TODO with cython, some of the Python-specific hacks can be skipped
+        if size < 0:
+            # strict version:
+            #
+            #     versionAndType:4 name~4 seqid:4 payload
+            version = (size & VERSION_MASK) >> 16
+            if version != VERSION:
+                raise ThriftProtocolError(
+                    'Unsupported version "%r"' % version
+                )
+            typ = size & TYPE_MASK
+            size = self._i32()
+            name = self.reader.take(size).decode('utf-8')
+        else:
+            # non-strict version:
+            #
+            #     name:4 type:1 seqid:4 payload
+            name = self.reader.take(size).decode('utf-8')
+            typ = self._byte()
+
+        cls = message_cls(typ)
+        if cls is None:
+            raise ThriftProtocolError('Unknown message type "%r"' % typ)
+
+        seqid = self._i32()
+        payload = self.reader.take(self.reader.available)
+
+        return cls(
+            name=name,
+            seqid=seqid,
+            payload=payload,
+        )
 
     cdef BoolValue read_bool(self):
         """Reads a boolean."""
@@ -334,6 +384,12 @@ cdef class BinaryProtocolWriter(ValueVisitor):
         for v in values:
             self.write(v)
 
+    cpdef void write_message(self, Message message) except *:
+        self.visit_binary(message.name.encode('utf-8'))
+        self.visit_byte(message.message_type)
+        self.visit_i32(message.seqid)
+        self.writer.write_bytes(message.payload)
+
 
 class BinaryProtocol(Protocol):
     """Implements the Thrift binary protocol."""
@@ -342,6 +398,16 @@ class BinaryProtocol(Protocol):
 
     writer_class = BinaryProtocolWriter
     reader_class = BinaryProtocolReader
+
+    def serialize_message(self, message):
+        buff = WriteBuffer()
+        self.writer_class(buff).write_message(message)
+        return buff.value
+
+    def deserialize_message(self, s):
+        buff = ReadBuffer(s)
+        reader = self.reader_class(buff)
+        return reader.read_message()
 
     def serialize_value(self, value):
         buff = WriteBuffer()

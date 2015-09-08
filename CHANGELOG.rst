@@ -11,6 +11,8 @@ Releases
 - **Breaking** Removed ``thriftrw.wire.TType`` in favor of the
   ``thriftrw.wire.ttype`` module.
 - Performance improvements to ``BinaryProtocol`` implementation.
+- Added ``Message`` wrapper for Thrift payloads. This may be used to make
+  requests to and receive responses from existing services using Apache Thrift.
 
 
 0.5.2 (2015-10-19)
